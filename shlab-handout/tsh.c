@@ -432,7 +432,29 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    return;
+    int olderrno =errno;
+    sigset_t mask_all , prev_all;
+    pid_t pid;
+    int status;
+    sigfillset(&mask_all);
+    while((pid=waitpid(-1,&status,WUNTRACED|WNOHANG)))
+    {
+        sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
+        
+        
+
+        if(WIFEXITED(status)){
+
+            deletejob(jobs,pid);
+
+        }
+
+        sigprocmask(SIG_SETMASK,&prev_all,NULL);
+        errno = olderrno;
+
+
+
+    }
 }
 
 /* 
@@ -442,6 +464,25 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    int olderrno = errno;
+
+    sigset_t mask_all , prev_all;
+   
+    sigfillset(&mask_all);
+    // block all signals
+    sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
+    pid_t foregorundPid = fgpid(jobs);
+
+    kill(-foregorundPid,SIGINT);
+    sigprocmask(SIG_SETMASK,&prev_all,NULL);
+
+    errno = olderrno;
+
+
+
+
+
+
     return;
 }
 
@@ -452,7 +493,28 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+
+    int olderrno = errno;
+
+    sigset_t mask_all , prev_all;
+   
+    sigfillset(&mask_all);
+    // block all signals
+    sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
+    pid_t foregroundPid = fgpid(jobs);
+
+    kill(-foregroundPid,SIGTSTP);
+    sigprocmask(SIG_SETMASK,&prev_all,NULL);
+
+    errno = olderrno;
+
+
+
+
+
+
     return;
+    
 }
 
 /*********************
