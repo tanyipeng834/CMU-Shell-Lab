@@ -393,7 +393,7 @@ void waitfg(pid_t pid)
     sigemptyset(&mask);
 
 
-    while(pid!=fgpid(jobs)){
+    while(pid==fgpid(jobs)){
         sigsuspend(&mask);
 
     }
@@ -418,7 +418,7 @@ void sigchld_handler(int sig)
     pid_t pid;
     int status;
     sigfillset(&mask_all);
-    while((pid=waitpid(-1,&status,WUNTRACED|WNOHANG)))
+    while((pid=waitpid(-1,&status,WUNTRACED|WNOHANG))>0)
     {
         sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
         
@@ -493,9 +493,7 @@ void sigtstp_handler(int sig)
 
 void printjob(pid_t pid , char * cmdline){
     
-    if (nextjid>1){
-    printf("[%d] (%d) %s",nextjid-1,pid,cmdline);
-    }
+  printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
 }
 
 /*********************
