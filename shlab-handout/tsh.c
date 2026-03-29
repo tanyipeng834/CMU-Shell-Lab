@@ -192,7 +192,7 @@ void eval(char *cmdline)
 
             sigprocmask(SIG_BLOCK,&prev_one,NULL);
 
-            if(execve(argv[0],argv,environ))
+            if(execve(argv[0],argv,environ)<0)
             {
                 printf("%s: Command not found.\n",argv[0]);
                 exit(0);
@@ -224,8 +224,8 @@ void eval(char *cmdline)
         // add the process to the job list so that it can be controlled by the shell.
         // state 1 means it is a background job
             // prevent other signals from modifying the shared jobs data structure
-         sigprocmask(SIG_BLOCK, &mask_all, NULL); 
-        addjob(jobs,pid,1,cmdline);
+        sigprocmask(SIG_BLOCK, &mask_all, NULL); 
+        addjob(jobs,pid,2,cmdline);
 
         // release the SIGCHILD blocked signal
         sigprocmask(SIG_SETMASK,&prev_one,NULL);
