@@ -364,12 +364,15 @@ void do_bgfg(char **argv)
         }
         pid_t currentPid = currentJob -> pid;
 
+        printf("current pid : %d",currentPid);
+
     if(!strcmp(command,"bg")){
         // if the current job is stopped then we will bring it 
-        if(currentJob->state==3){
+        if(currentJob->state==ST){
 
             
             // send signal for sigcont and allow the process group to continue in the background.
+            currentJob ->state = BG;
             kill(-currentPid,SIGCONT);
         }
 
@@ -429,6 +432,20 @@ void sigchld_handler(int sig)
             deletejob(jobs,pid);
 
         }
+        else if (WIFSIGNALED(status)){
+             printf("Job [%d] (%d) terminated by signal %d\n",
+               pid2jid(pid), pid, WTERMSIG(status));
+        deletejob(jobs, pid);
+
+        }
+         else if (WIFSTOPPED(status)) {
+        struct job_t *job = getjobpid(jobs, pid);
+        if (job != NULL) {
+            job->state = ST;
+        }
+        printf("Job [%d] (%d) stopped by signal %d\n",
+               pid2jid(pid), pid, WSTOPSIG(status));
+    }
 
         sigprocmask(SIG_SETMASK,&prev_all,NULL);
         errno = olderrno;
@@ -453,8 +470,12 @@ void sigint_handler(int sig)
     // block all signals
     sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
     pid_t foregroundPid = fgpid(jobs);
-
+    if(foregroundPid>0){
     kill(-foregroundPid,SIGINT);
+
+    }
+
+    
     sigprocmask(SIG_SETMASK,&prev_all,NULL);
 
     errno = olderrno;
