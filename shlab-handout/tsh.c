@@ -60,6 +60,7 @@ int builtin_cmd(char **argv);
 void do_bgfg(char **argv);
 void waitfg(pid_t pid);
 pid_t Fork(void);
+void printjob(pid_t pid , char * cmdline);
 
 void sigchld_handler(int sig);
 void sigtstp_handler(int sig);
@@ -225,7 +226,12 @@ void eval(char *cmdline)
         // state 1 means it is a background job
             // prevent other signals from modifying the shared jobs data structure
         sigprocmask(SIG_BLOCK, &mask_all, NULL); 
-        addjob(jobs,pid,2,cmdline);
+        if(addjob(jobs,pid,2,cmdline)){
+            printjob(pid,cmdline);
+
+        }
+
+        
 
         // release the SIGCHILD blocked signal
         sigprocmask(SIG_SETMASK,&prev_one,NULL);
@@ -517,6 +523,14 @@ void sigtstp_handler(int sig)
     
 }
 
+
+void printjob(pid_t pid , char * cmdline){
+    
+    if (nextjid>1){
+    printf("[%d] (%d) %s",nextjid-1,pid,cmdline);
+    }
+}
+
 /*********************
  * End signal handlers
  *********************/
@@ -551,6 +565,8 @@ int maxjid(struct job_t *jobs)
 	    max = jobs[i].jid;
     return max;
 }
+
+
 
 /* addjob - Add a job to the job list */
 int addjob(struct job_t *jobs, pid_t pid, int state, char *cmdline) 
