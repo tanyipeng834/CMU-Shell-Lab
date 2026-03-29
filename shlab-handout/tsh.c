@@ -59,6 +59,7 @@ void eval(char *cmdline);
 int builtin_cmd(char **argv);
 void do_bgfg(char **argv);
 void waitfg(pid_t pid);
+pid_t Fork(void);
 
 void sigchld_handler(int sig);
 void sigtstp_handler(int sig);
@@ -166,7 +167,78 @@ int main(int argc, char **argv)
 // set the 
 void eval(char *cmdline) 
 {
-    return;
+    char *argv[MAXARGS];
+    char buf[MAXLINE];
+    int bg;
+    pid_t pid;
+    strcpy(buf,cmdline);
+    sigset_t mask_all, mask_one, prev_one;
+    sigfillset(&mask_all);
+
+    sigemptyset(&mask_one);
+    sigaddset(&mask_one,SIGCHLD);
+
+    bg = parseline(buf,argv);
+    // there is no command line argument
+    if(argv[0]==NULL)return;
+
+    if(!builtin_cmd(argv)){
+        // if it is the child process and return value of Fork() is 0
+        sigprocmask(SIG_BLOCK,&mask_one,&prev_one);
+        
+        if((pid=Fork())==0){
+            // put the child process in a seperate process group.
+            setpgid(0,0);
+
+            sigprocmask(SIG_BLOCK,&prev_one,NULL);
+
+            if(execve(argv[0],argv,environ))
+            {
+                printf("%s: Command not found.\n",argv[0]);
+                exit(0);
+            }
+
+        } 
+    
+    if(!bg){
+        int status;
+
+        if(waitpid(pid,&status,0)<0){
+            unix_error("waitfg: waitpid error");
+
+           
+
+        }
+        else{
+            // check if child exited normally
+            if (WIFEXITED(status))printf("Child %d terminated with exit status %d\n",pid, WEXITSTATUS(status));
+            else
+            printf("Child %d terminated abnormally\n", pid);
+
+        }
+
+
+    }
+    else
+    {
+        // add the process to the job list so that it can be controlled by the shell.
+        // state 1 means it is a background job
+            // prevent other signals from modifying the shared jobs data structure
+         sigprocmask(SIG_BLOCK, &mask_all, NULL); 
+        addjob(jobs,pid,1,cmdline);
+
+        // release the SIGCHILD blocked signal
+        sigprocmask(SIG_SETMASK,&prev_one,NULL);
+
+
+
+    }
+}
+
+    
+
+
+    
 }
 
 /* 
@@ -233,7 +305,25 @@ int parseline(const char *cmdline, char **argv)
 int builtin_cmd(char **argv) 
 {
     char * command = argv[0];
-    if(!strcmp(command,"quit")) exit(0);
+    if(!strcmp(command,"quit")){
+
+        exit(0);
+        return 1;
+
+    }
+    if (!strcmp(command,"jobs")){
+        
+        listjobs(jobs);
+        return 1;
+    }
+
+    if(!strcmp(command,"bg") || !strcmp(command,"fg")){
+        do_bgfg(argv);
+        return 1;
+    }
+
+    
+
 
     return 0;     /* not a builtin command */
 }
@@ -243,7 +333,73 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    return;
+
+
+    union processData{
+        pid_t processId;
+        int   jobId;
+    };
+
+    union processData pData;
+    // 
+    char * command = argv[0];
+
+    char * processDataStr = argv[1];
+
+    int isJob =0;
+
+
+    // when a shell bg a task, what it does is that it would take a suspended process and then
+    // 
+    
+        
+        char * endPtr;
+        struct job_t * currentJob;
+
+        if (processDataStr[0]=='%'){
+            isJob =1;
+            // ignore the first character
+            processDataStr+=1;
+
+        }
+
+        if(isJob)
+        {
+           
+
+            pData.jobId = (int)strtol(processDataStr,&endPtr,10);
+
+             currentJob= getjobjid(jobs,pData.jobId);
+
+
+        }
+        else{
+
+            pData.processId = (pid_t)strtol(processDataStr,&endPtr,10);
+            currentJob = getjobpid(jobs,pData.processId); 
+
+
+
+        }
+        pid_t currentPid = currentJob -> pid;
+
+    if(!strcmp(command,"bg")){
+        // if the current job is stopped then we will bring it 
+        if(currentJob->state==3){
+
+            
+            // send signal for sigcont and allow the process group to continue in the background.
+            kill(-currentPid,SIGCONT);
+        }
+
+
+
+    }
+    else if(!strcmp(command,"fg"))
+    {
+        waitfg(currentPid);
+    }
+    
 }
 
 /* 
@@ -251,6 +407,15 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+
+    sigset_t mask;
+    sigemptyset(&mask);
+
+
+    while(pid!=fgpid(jobs)){
+        sigsuspend(&mask);
+
+    }
     return;
 }
 
@@ -507,6 +672,16 @@ void sigquit_handler(int sig)
 {
     printf("Terminating after receipt of SIGQUIT signal\n");
     exit(1);
+}
+
+pid_t Fork(void)
+{
+pid_t pid;
+
+if ((pid = fork()) < 0)
+unix_error("Fork error");
+return pid;
+
 }
 
 
