@@ -364,7 +364,7 @@ void do_bgfg(char **argv)
         }
         pid_t currentPid = currentJob -> pid;
 
-        printf("current pid : %d",currentPid);
+        
 
     if(!strcmp(command,"bg")){
         // if the current job is stopped then we will bring it 
@@ -381,6 +381,10 @@ void do_bgfg(char **argv)
     }
     else if(!strcmp(command,"fg"))
     {
+        if(currentJob ->state ==ST){
+            kill(-currentPid,SIGCONT);
+        }
+        currentJob ->state= FG;
         waitfg(currentPid);
     }
     
