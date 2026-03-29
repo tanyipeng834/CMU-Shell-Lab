@@ -191,61 +191,36 @@ void eval(char *cmdline)
             // put the child process in a seperate process group.
             setpgid(0,0);
 
-            sigprocmask(SIG_BLOCK,&prev_one,NULL);
+            sigprocmask(SIG_SETMASK,&prev_one,NULL);
 
             if(execve(argv[0],argv,environ)<0)
             {
                 printf("%s: Command not found.\n",argv[0]);
-                exit(0);
+                exit(1);
             }
 
         } 
-    
-    if(!bg){
-        int status;
-
-        if(waitpid(pid,&status,0)<0){
-            unix_error("waitfg: waitpid error");
-
-           
-
-        }
-        else{
-            // check if child exited normally
-            if (WIFEXITED(status))printf("Child %d terminated with exit status %d\n",pid, WEXITSTATUS(status));
-            else
-            printf("Child %d terminated abnormally\n", pid);
-
-        }
-
-
-    }
-    else
-    {
-        // add the process to the job list so that it can be controlled by the shell.
-        // state 1 means it is a background job
-            // prevent other signals from modifying the shared jobs data structure
-        sigprocmask(SIG_BLOCK, &mask_all, NULL); 
-        if(addjob(jobs,pid,2,cmdline)){
-            printjob(pid,cmdline);
-
-        }
-
-        
-
-        // release the SIGCHILD blocked signal
+        sigprocmask(SIG_BLOCK,&mask_all,NULL);
+        addjob(jobs,pid,bg? BG:FG ,cmdline);
         sigprocmask(SIG_SETMASK,&prev_one,NULL);
+        if(!bg){
+            waitfg(pid);
+        }
+        else{        
+            printjob(pid,cmdline);
+        }
 
-
-
-    }
-}
+        }
+    
+    
 
     
 
 
     
 }
+
+
 
 /* 
  * parseline - Parse the command line and build the argv array.
@@ -347,7 +322,7 @@ void do_bgfg(char **argv)
     };
 
     union processData pData;
-    // 
+    
     char * command = argv[0];
 
     char * processDataStr = argv[1];
@@ -477,9 +452,9 @@ void sigint_handler(int sig)
     sigfillset(&mask_all);
     // block all signals
     sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
-    pid_t foregorundPid = fgpid(jobs);
+    pid_t foregroundPid = fgpid(jobs);
 
-    kill(-foregorundPid,SIGINT);
+    kill(-foregroundPid,SIGINT);
     sigprocmask(SIG_SETMASK,&prev_all,NULL);
 
     errno = olderrno;
@@ -508,17 +483,9 @@ void sigtstp_handler(int sig)
     // block all signals
     sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
     pid_t foregroundPid = fgpid(jobs);
-
     kill(-foregroundPid,SIGTSTP);
     sigprocmask(SIG_SETMASK,&prev_all,NULL);
-
     errno = olderrno;
-
-
-
-
-
-
     return;
     
 }
