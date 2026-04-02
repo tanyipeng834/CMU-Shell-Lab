@@ -404,7 +404,9 @@ void do_bgfg(char **argv)
             
             // send signal for sigcont and allow the process group to continue in the background.
             currentJob ->state = BG;
-            kill(-currentPid,SIGCONT);
+            if (kill(-currentPid,SIGCONT)<0){
+                unix_error("Error in kill system call");
+            }
         }
 
 
@@ -413,7 +415,9 @@ void do_bgfg(char **argv)
     else if(!strcmp(command,"fg"))
     {
         if(currentJob ->state ==ST){
-            kill(-currentPid,SIGCONT);
+           if( kill(-currentPid,SIGCONT)<0){
+            unix_error("Error with kill system call");
+           }
         }
         currentJob ->state= FG;
         waitfg(currentPid);
@@ -510,7 +514,9 @@ void sigint_handler(int sig)
     sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
     pid_t foregroundPid = fgpid(jobs);
     if(foregroundPid>0){
-    kill(-foregroundPid,SIGINT);
+    if (kill(-foregroundPid,SIGINT)<0){
+        unix_error("Error with the kill system call");
+    }
 
     }
 
@@ -543,7 +549,9 @@ void sigtstp_handler(int sig)
     // block all signals
     sigprocmask(SIG_BLOCK,&mask_all,&prev_all);
     pid_t foregroundPid = fgpid(jobs);
-    kill(-foregroundPid,SIGTSTP);
+    if (kill(-foregroundPid,SIGTSTP)<0){
+        unix_error("Error with the kill system call");
+    }
     sigprocmask(SIG_SETMASK,&prev_all,NULL);
     errno = olderrno;
     return;
