@@ -326,7 +326,7 @@ void do_bgfg(char **argv)
     
     char * command = argv[0];
      
-   if (argv[1]=NULL) {
+   if (argv[1]==NULL) {
     printf("%s command requires PID or %%jobid argument\n", command);
     return;
 }
@@ -359,14 +359,36 @@ void do_bgfg(char **argv)
 
             pData.jobId = (int)strtol(processDataStr,&endPtr,10);
 
+            if(*endPtr!='\0'){
+
+                printf("%s: argument must be a PID or %%jobid \n", command);
+                return;
+
+            }
+
              currentJob= getjobjid(jobs,pData.jobId);
+
+             if(currentJob ==NULL){
+                printf("%s: No such job \n",argv[1]);
+                return;
+             }
 
 
         }
         else{
 
             pData.processId = (pid_t)strtol(processDataStr,&endPtr,10);
+            if(*endPtr!='\0'){
+                printf("%s: argument must be a PID or %%jobid \n", command);
+                return;
+                
+            }
             currentJob = getjobpid(jobs,pData.processId); 
+
+              if(currentJob ==NULL){
+                printf("(%s): No such process \n",argv[1]);
+                return;
+             }
 
 
 
