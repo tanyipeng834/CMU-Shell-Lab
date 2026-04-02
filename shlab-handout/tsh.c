@@ -323,7 +323,16 @@ void do_bgfg(char **argv)
 
     union processData pData;
     
+    
     char * command = argv[0];
+     
+   if (argv[1]=NULL) {
+    printf("%s command requires PID or %%jobid argument\n", command);
+    return;
+}
+    
+    
+    
 
     char * processDataStr = argv[1];
 
@@ -397,8 +406,12 @@ void waitfg(pid_t pid)
 {
 
     sigset_t mask;
+    // Sleep until a signal is delivered which is sigchild and it means that 
+    // the foreground process has been reaped.
     sigemptyset(&mask);
 
+        
+    
 
     while(pid==fgpid(jobs)){
         sigsuspend(&mask);
